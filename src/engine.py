@@ -114,21 +114,12 @@ class MinesweeperEngine:
                 self.view_mask[y][x] = self.field[y][x]
                 self.num_open_cells += 1
 
-        if self.num_mines == self.count_not_open():
+        if self.num_mines == self.height*self.width - self.num_open_cells:
             for i, row in enumerate(self.view_mask):
                 for j, val in enumerate(row):
                     if val == CellValue.HIDDEN:
                         self.view_mask[i][j] = CellValue.FLAG
             self.is_game_over = True
-
-    def count_not_open(self):
-        count_not_open = 0
-        for row in self.view_mask:
-            for val in row:
-                if val in (CellValue.HIDDEN, CellValue.FLAG):
-                    count_not_open += 1
-        assert self.num_open_cells == self.height*self.width - count_not_open, (self.num_open_cells, count_not_open)
-        return count_not_open
 
     def to_str(self, is_view_mask=False):
         source = self.view_mask if is_view_mask else self.field
@@ -137,14 +128,23 @@ class MinesweeperEngine:
             row_strs.append(" ".join((CELL_STR[x] for x in row)))
         return "\n".join(row_strs)
 
-    def partially_open(self, open_ratio = 0.2):
-        while not self.is_game_over and self.open_ratio() < open_ratio:
+    def open_one_random_cell(self):
+        if self.is_game_over:
+            return
+
+        while True:
             x, y = random.randint(0, self.width-1), random.randint(0, self.height-1)
             if self.view_mask[y][x] == CellValue.HIDDEN and self.field[y][x] != CellValue.MINE:
                 self.open_cell(x, y)
+                break
+
+
+    def partially_open(self, open_ratio = 0.2):
+        while not self.is_game_over and self.open_ratio() < open_ratio:
+            self.open_one_random_cell()
 
     def open_ratio(self):
-        return 1 - (self.count_not_open() / (self.width*self.height))
+        return self.num_open_cells / (self.width*self.height)
 
     def __str__(self):
         return self.to_str(False)
