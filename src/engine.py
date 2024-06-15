@@ -47,6 +47,7 @@ class MinesweeperEngine:
         self.height = height
         self.num_mines = num_mines
         self.is_game_over = False
+        self.num_open_cells = 0
         self.field, self.view_mask = self.GenerateField()
 
     def GenerateField(self) -> tuple[list[list[CellValue]], list[list[CellValue]]]:
@@ -92,12 +93,17 @@ class MinesweeperEngine:
                     for j, val in enumerate(row):
                         self.view_mask[i][j] = val
                 self.view_mask[y][x] = CellValue.EXPLOSION
+                self.num_open_cells = self.width * self.height
                 self.is_game_over = True
             case CellValue.EMPTY:
                 # BFS to open the field
                 stack = [(x, y)]
                 while stack:
                     tmp_x, tmp_y = stack.pop()
+                    if self.view_mask[tmp_y][tmp_x] != CellValue.HIDDEN:
+                        continue
+
+                    self.num_open_cells += 1
                     self.view_mask[tmp_y][tmp_x] = self.field[tmp_y][tmp_x]
                     if self.field[tmp_y][tmp_x] == CellValue.EMPTY:
                         for i in range(max(0, tmp_y-1), min(self.height, tmp_y+2)):
@@ -106,6 +112,7 @@ class MinesweeperEngine:
                                     stack.append((j, i))
             case _:
                 self.view_mask[y][x] = self.field[y][x]
+                self.num_open_cells += 1
 
         if self.num_mines == self.count_not_open():
             for i, row in enumerate(self.view_mask):
@@ -120,6 +127,7 @@ class MinesweeperEngine:
             for val in row:
                 if val in (CellValue.HIDDEN, CellValue.FLAG):
                     count_not_open += 1
+        assert self.num_open_cells == self.height*self.width - count_not_open, (self.num_open_cells, count_not_open)
         return count_not_open
 
     def to_str(self, is_view_mask=False):
