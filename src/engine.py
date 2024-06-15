@@ -21,7 +21,6 @@ class CellValue(IntEnum):
     HIDDEN = 10
     FLAG = 11
     EXPLOSION = 12
-    BORDER = 13
 
 CELL_STR = {
     CellValue.EMPTY: ' ',
@@ -34,30 +33,12 @@ CELL_STR = {
     CellValue.SEVEN: '7',
     CellValue.EIGHT: '8',
     CellValue.MINE: '*',
-    CellValue.HIDDEN: ' ',
+    CellValue.HIDDEN: '☐',
     CellValue.FLAG: '⚐',
     CellValue.EXPLOSION: 'X',
-    CellValue.BORDER: '#',
 }
 
-CELL_COLORS = {
-    CellValue.EMPTY: 'black',
-    CellValue.ONE: 'blue',
-    CellValue.TWO: 'green',
-    CellValue.THREE: 'red',
-    CellValue.FOUR: 'navy',
-    CellValue.FIVE: 'brown',
-    CellValue.SIX: 'red3',
-    CellValue.SEVEN: 'tomato',
-    CellValue.EIGHT: 'grey17',
-    CellValue.MINE: 'black',
-    CellValue.HIDDEN: 'black',
-    CellValue.FLAG: 'red',
-    CellValue.EXPLOSION: 'red',
-    CellValue.BORDER: 'black',
-}
-
-class MinesweeperEngine:    
+class MinesweeperEngine:
     def __init__(self, width: int, height:int, num_mines: int):
         assert 0 < width
         assert 0 < height
@@ -65,9 +46,9 @@ class MinesweeperEngine:
         self.width = width
         self.height = height
         self.num_mines = num_mines
-        self.is_game_over = False        
-        self.field, self.view_mask = self.GenerateField()        
-    
+        self.is_game_over = False
+        self.field, self.view_mask = self.GenerateField()
+
     def GenerateField(self) -> tuple[list[list[CellValue]], list[list[CellValue]]]:
         field = []
         view_mask = []
@@ -83,14 +64,14 @@ class MinesweeperEngine:
             x = (pos % self.width)
             assert field[y][x] <= CellValue.EIGHT
             field[y][x] = CellValue.MINE
-            
+
             for i in range(max(y-1, 0), min(y+2, self.height)):
                 for j in range(max(x-1, 0), min(x+2, self.width)):
                     if field[i][j] < CellValue.EIGHT:
                         field[i][j] += 1
 
         return field, view_mask
-    
+
     def toggle_flag(self, x, y):
         if self.is_game_over:
             return
@@ -99,7 +80,7 @@ class MinesweeperEngine:
                 self.view_mask[y][x] = CellValue.FLAG
             case CellValue.FLAG:
                 self.view_mask[y][x] = CellValue.HIDDEN
-    
+
     def open_cell(self, x, y):
         if self.is_game_over:
             return
@@ -126,17 +107,20 @@ class MinesweeperEngine:
             case _:
                 self.view_mask[y][x] = self.field[y][x]
 
-        count_not_open = 0
-        for row in self.view_mask:
-            for val in row:
-                if val in (CellValue.HIDDEN, CellValue.FLAG):
-                    count_not_open += 1
-        if self.num_mines == count_not_open:
+        if self.num_mines == self.count_not_open():
             for i, row in enumerate(self.view_mask):
                 for j, val in enumerate(row):
                     if val == CellValue.HIDDEN:
                         self.view_mask[i][j] = CellValue.FLAG
             self.is_game_over = True
+
+    def count_not_open(self):
+        count_not_open = 0
+        for row in self.view_mask:
+            for val in row:
+                if val in (CellValue.HIDDEN, CellValue.FLAG):
+                    count_not_open += 1
+        return count_not_open
 
     def to_str(self, is_view_mask=False):
         source = self.view_mask if is_view_mask else self.field
@@ -145,10 +129,27 @@ class MinesweeperEngine:
             row_strs.append(" ".join((CELL_STR[x] for x in row)))
         return "\n".join(row_strs)
 
+    def partially_open(self, open_ratio = 0.2):
+        while not self.is_game_over and self.open_ratio() < open_ratio:
+            x, y = random.randint(0, self.width-1), random.randint(0, self.height-1)
+            if self.view_mask[y][x] == CellValue.HIDDEN and self.field[y][x] != CellValue.MINE:
+                self.open_cell(x, y)
+
+    def open_ratio(self):
+        return 1 - (self.count_not_open() / (self.width*self.height))
+
+    def to_tensor(self, is_view_mask=False, only_flags_vs_other=False, mask_open=False):
+        source = self.view_mask if is_view_mask else self.field
+        tensor = torch.tensor(source, dtype=torch.long, device=device)
+        if only_flags_vs_other:
+            tensor = (tensor > CellValue.EIGHT).long().to(device)
+        if mask_open:
+            tensor = torch.where(torch.tensor(self.view_mask, dtype=torch.long, device=device) == CellValue.HIDDEN, tensor, -100).to(device)
+        return tensor
+
     def __str__(self):
         return self.to_str(False)
-    
-    
+
 
 if __name__ == '__main__':
     engine = MinesweeperEngine(40, 10, 100)

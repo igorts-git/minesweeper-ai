@@ -4,9 +4,28 @@ import engine
 
 GAME_WIDTH = 20
 GAME_HEIGHT = 15
-GAME_MINE_RATIO = 0.3
+GAME_MINE_RATIO = 0.25
 CELL_WIDTH = 1
 CELL_HEIGHT = 1
+
+CELL_COLORS = {
+    engine.CellValue.EMPTY: 'black',
+    engine.CellValue.ONE: 'blue',
+    engine.CellValue.TWO: 'green',
+    engine.CellValue.THREE: 'red',
+    engine.CellValue.FOUR: 'navy',
+    engine.CellValue.FIVE: 'brown',
+    engine.CellValue.SIX: 'red3',
+    engine.CellValue.SEVEN: 'tomato',
+    engine.CellValue.EIGHT: 'grey17',
+    engine.CellValue.MINE: 'black',
+    engine.CellValue.HIDDEN: 'black',
+    engine.CellValue.FLAG: 'red',
+    engine.CellValue.EXPLOSION: 'red',
+}
+
+CELL_STR = engine.CELL_STR.copy()
+CELL_STR[engine.CellValue.HIDDEN] = " "
 
 class MinesweeperGUI(tk.Tk):
     def __init__(self, width, height, num_mines):
@@ -24,16 +43,16 @@ class MinesweeperGUI(tk.Tk):
             row = []
             for x in range(width):
                 cell = tk.Button(self.game_field_frame, text=" ", command=functools.partial(self.OpenClick, x, y), height=CELL_HEIGHT, width=CELL_WIDTH)
-                
+
                 # From the documentation is not clear which <Button-N> represents the right mouse button.
                 cell.bind("<Button-2>", functools.partial(self.ToggleFlag, x=x, y=y))
                 cell.bind("<Button-3>", functools.partial(self.ToggleFlag, x=x, y=y))
-                
+
                 cell.grid(row=y, column=x)
                 row.append(cell)
             self.cells.append(row)
         self.Redraw()
-    
+
     def Redraw(self):
         for y, row in enumerate(self.eng.view_mask):
             for x, val in enumerate(row):
@@ -43,20 +62,19 @@ class MinesweeperGUI(tk.Tk):
                 if val not in (engine.CellValue.HIDDEN, engine.CellValue.FLAG):
                     state = tk.DISABLED
                     relief = tk.FLAT
-                color = engine.CELL_COLORS[val]
-                cell.configure(text=engine.CELL_STR[val], disabledforeground=color, fg=color, state=state, relief=relief)
-                
+                color = CELL_COLORS[val]
+                cell.configure(text=CELL_STR[val], disabledforeground=color, fg=color, state=state, relief=relief)
 
     def OpenClick(self, x, y):
         self.eng.open_cell(x, y)
         self.Redraw()
-    
+
     def ToggleFlag(self, event, x, y):
         self.eng.toggle_flag(x, y)
         self.Redraw()
 
     def Restart(self):
-        self.eng = engine.MinesweeperEngine(width=self.eng.width, height=self.eng.height, num_mines=self.eng.num_mines)        
+        self.eng = engine.MinesweeperEngine(width=self.eng.width, height=self.eng.height, num_mines=self.eng.num_mines)
         self.Redraw()
 
 if __name__ == "__main__":
