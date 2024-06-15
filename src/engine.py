@@ -138,15 +138,6 @@ class MinesweeperEngine:
     def open_ratio(self):
         return 1 - (self.count_not_open() / (self.width*self.height))
 
-    def to_tensor(self, is_view_mask=False, only_flags_vs_other=False, mask_open=False):
-        source = self.view_mask if is_view_mask else self.field
-        tensor = torch.tensor(source, dtype=torch.long, device=device)
-        if only_flags_vs_other:
-            tensor = (tensor > CellValue.EIGHT).long().to(device)
-        if mask_open:
-            tensor = torch.where(torch.tensor(self.view_mask, dtype=torch.long, device=device) == CellValue.HIDDEN, tensor, -100).to(device)
-        return tensor
-
     def __str__(self):
         return self.to_str(False)
 
