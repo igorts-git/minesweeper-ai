@@ -11,6 +11,8 @@ import time
 
 import engine
 
+verbose_mode = 1
+
 def EngineToInputTensor(eng: engine.MinesweeperEngine, device: str) -> torch.Tensor:
     """Converts MinesweeperEngine view mask into a Pytorch Tensor"""
     tensor = torch.tensor(eng.view_mask, dtype=torch.int32, device=device)
@@ -65,14 +67,15 @@ class DatasetGenerator:
             num_mines = random.randint(int(self.board_size*0.05), self.board_size//2)
             eng = engine.MinesweeperEngine(width=self.width, height=self.height, num_mines=num_mines)
             eng.partially_open(open_ratio=random.random() * 0.3 + 0.1)
-            if sample_id % 50 == 0:
+            if verbose_mode >= 2 and sample_id % 50 == 0:
                 print(f"{idx=}")
                 print(eng.to_str(is_view_mask=True))
             save_dict[idx] = (EngineToInputTensor(eng, device="cpu"), EngineToLabelsTensor(eng, device="cpu"))
         with gzip.open(filename=file_name, mode='wb') as file_obj:
             torch.save(save_dict, file_obj)
         elapsed_t = time.time() - start_t
-        print(f"generated {file_name} in {elapsed_t:.2f}s")
+        if verbose_mode >= 1:
+            print(f"generated {file_name} in {elapsed_t:.2f}s")
 
     def GenerateDataset(self, num_files: int, override=False) -> None:
         for file_idx in range(num_files):
@@ -124,11 +127,13 @@ class MinesweeperDataset(torch.utils.data.Dataset):
                 self.current_file_content = torch.load(f)
             self.current_file_idx = file_idx
             elapsed_t = time.time() - start_t
-            print(f"fetched file {file_name} in {elapsed_t:.2f}s")
+            if verbose_mode >= 2:
+                print(f"fetched file {file_name} in {elapsed_t:.2f}s")
         return self.current_file_content[idx]
 
 
 if __name__ == "__main__":
+    verbose_mode = 2
     width = 64
     height = 64
     num_samples_per_file = 1000
