@@ -61,7 +61,7 @@ class DatasetGenerator:
             print(f"skipping {file_name}")
             return
         start_t = time.time()
-        save_dict = {}
+        save_list = []
         for sample_id in range(self.num_samples_per_file):
             idx = file_idx * self.num_samples_per_file + sample_id
             random.seed(idx)
@@ -71,9 +71,11 @@ class DatasetGenerator:
             if verbose_mode >= 2 and sample_id % 50 == 0:
                 print(f"{idx=}")
                 print(eng.to_str(is_view_mask=True))
-            save_dict[idx] = (EngineToInputTensor(eng, device="cpu").to(self.dtype), EngineToLabelsTensor(eng, device="cpu").to(self.dtype))
+            save_list.append((
+                EngineToInputTensor(eng, device="cpu").to(self.dtype),
+                EngineToLabelsTensor(eng, device="cpu").to(self.dtype)))
         with gzip.open(filename=file_name, mode='wb') as file_obj:
-            torch.save(save_dict, file_obj)
+            torch.save(save_list, file_obj)
         elapsed_t = time.time() - start_t
         if verbose_mode >= 1:
             print(f"generated {file_name} in {elapsed_t:.2f}s")
@@ -84,16 +86,20 @@ class DatasetGenerator:
 
 
 class MinesweeperDataset(torch.utils.data.Dataset):
-    def __init__(self, width=128, height=128, num_samples_per_file=1000, data_dir="./data"):
+    def __init__(self, width=128, height=128, num_samples_per_file=1000, data_dir="./data", shuffle=False):
         super().__init__()
         self.width = width
         self.height = height
         self.num_samples_per_file = num_samples_per_file
         self.data_dir = data_dir
-        self.num_samples = self.ScanDir()
+        self.num_files, self.num_samples = self.ScanDir()
+        self.shuffle = shuffle
+        self.file_indicies = list(range(self.num_files))
+        if self.shuffle:
+            random.shuffle(self.file_indicies)
         assert self.num_samples > 0, f"No matching data files in '{data_dir}'"
         self.current_file_idx: int | None = None
-        self.current_file_content: dict[int, tuple[torch.Tensor, torch.Tensor]] | None = None
+        self.current_file_content: list[tuple[torch.Tensor, torch.Tensor]] | None = None
 
     def ScanDir(self) -> int:
         file_idx = 0
@@ -108,14 +114,15 @@ class MinesweeperDataset(torch.utils.data.Dataset):
                 file_idx += 1
             else:
                 break
-        return file_idx * self.num_samples_per_file
+        return file_idx, file_idx * self.num_samples_per_file
 
     def __len__(self):
         return self.num_samples
 
     def __getitem__(self, idx):
         assert idx < self.num_samples, (idx, self.num_samples)
-        file_idx = idx // self.num_samples_per_file
+        file_idx = self.file_indicies[idx // self.num_samples_per_file]
+        record_idx = idx % self.num_samples_per_file
         if self.current_file_idx != file_idx:
             file_name = _MakeFileName(
                 file_idx=file_idx,
@@ -126,21 +133,24 @@ class MinesweeperDataset(torch.utils.data.Dataset):
             start_t = time.time()
             with gzip.open(file_name, mode='rb') as f:
                 self.current_file_content = torch.load(f)
+                if self.shuffle:
+                    random.shuffle(self.current_file_content)
             self.current_file_idx = file_idx
             elapsed_t = time.time() - start_t
             if verbose_mode >= 2:
                 print(f"fetched file {file_name} in {elapsed_t:.2f}s")
-        a, b = self.current_file_content[idx]
+        a, b = self.current_file_content[record_idx]
         return a.long(), b.long()
 
 
 if __name__ == "__main__":
     verbose_mode = 2
-    width = 64
-    height = 64
-    num_samples_per_file = 1000
+    width = 32
+    height = 32
+    num_samples_per_file = 100
     gen = DatasetGenerator(width=width, height=height, num_samples_per_file=num_samples_per_file, save_dir="./data")
     gen.GenerateDataset(num_files=4, override=True)
-    dataset = MinesweeperDataset(width=width, height=height, num_samples_per_file=num_samples_per_file, data_dir="./data")
+    gen.GenerateDataset(num_files=5, override=False)
+    dataset = MinesweeperDataset(width=width, height=height, num_samples_per_file=num_samples_per_file, data_dir="./data", shuffle=True)
     for x in range(len(dataset)):
         dataset[x]
