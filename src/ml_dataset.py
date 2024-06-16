@@ -15,7 +15,7 @@ verbose_mode = 1
 
 def EngineToInputTensor(eng: engine.MinesweeperEngine, device: str) -> torch.Tensor:
     """Converts MinesweeperEngine view mask into a Pytorch Tensor"""
-    tensor = torch.tensor(eng.view_mask, dtype=torch.int32, device=device)
+    tensor = torch.tensor(eng.view_mask, dtype=torch.long, device=device)
     return tensor
 
 def EngineToHiddenMask(eng: engine.MinesweeperEngine, device: str) -> torch.Tensor:
@@ -30,8 +30,8 @@ def EngineToLabelsTensor(eng: engine.MinesweeperEngine, device: str) -> torch.Te
         1 indicates cells with mines
         -100 is set for visible cells to avoid training on them.
     """
-    field_tensor = torch.tensor(eng.field, dtype=torch.int32, device=device)
-    is_mine_tensor = (field_tensor > engine.CellValue.EIGHT).int().to(device)
+    field_tensor = torch.tensor(eng.field, dtype=torch.long, device=device)
+    is_mine_tensor = (field_tensor > engine.CellValue.EIGHT).long().to(device)
     mask_tensor = EngineToHiddenMask(eng=eng, device=device)
     return torch.where(mask_tensor, is_mine_tensor, -100).to(device)
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     height = 64
     num_samples_per_file = 1000
     gen = DatasetGenerator(width=width, height=height, num_samples_per_file=num_samples_per_file, save_dir="./data")
-    gen.GenerateDataset(num_files=10, override=True)
+    gen.GenerateDataset(num_files=4, override=True)
     dataset = MinesweeperDataset(width=width, height=height, num_samples_per_file=num_samples_per_file, data_dir="./data")
     for x in range(len(dataset)):
         dataset[x]
