@@ -41,12 +41,13 @@ def _MakeFileName(file_idx: int, width=64, height=32, num_samples_per_file=100, 
 
 
 class DatasetGenerator:
-    def __init__(self, width=128, height=128, num_samples_per_file=1000, save_dir="./data"):
+    def __init__(self, width=128, height=128, num_samples_per_file=1000, save_dir="./data", dtype=torch.int8):
         self.width = width
         self.height = height
         self.num_samples_per_file = num_samples_per_file
         self.board_size = width * height
         self.save_dir = save_dir
+        self.dtype = dtype
         os.makedirs(save_dir, exist_ok=True)
 
     def GenerateOneFile(self, file_idx: int, override=False) -> None:
@@ -70,7 +71,7 @@ class DatasetGenerator:
             if verbose_mode >= 2 and sample_id % 50 == 0:
                 print(f"{idx=}")
                 print(eng.to_str(is_view_mask=True))
-            save_dict[idx] = (EngineToInputTensor(eng, device="cpu"), EngineToLabelsTensor(eng, device="cpu"))
+            save_dict[idx] = (EngineToInputTensor(eng, device="cpu").to(self.dtype), EngineToLabelsTensor(eng, device="cpu").to(self.dtype))
         with gzip.open(filename=file_name, mode='wb') as file_obj:
             torch.save(save_dict, file_obj)
         elapsed_t = time.time() - start_t
@@ -129,7 +130,8 @@ class MinesweeperDataset(torch.utils.data.Dataset):
             elapsed_t = time.time() - start_t
             if verbose_mode >= 2:
                 print(f"fetched file {file_name} in {elapsed_t:.2f}s")
-        return self.current_file_content[idx]
+        a, b = self.current_file_content[idx]
+        return a.long(), b.long()
 
 
 if __name__ == "__main__":
