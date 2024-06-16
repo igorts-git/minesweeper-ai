@@ -121,13 +121,6 @@ class MinesweeperEngine:
                         self.view_mask[i][j] = CellValue.FLAG
             self.is_game_over = True
 
-    def to_str(self, is_view_mask=False):
-        source = self.view_mask if is_view_mask else self.field
-        row_strs = []
-        for row in source:
-            row_strs.append(" ".join((CELL_STR[x] for x in row)))
-        return "\n".join(row_strs)
-
     def open_one_random_cell(self):
         if self.is_game_over:
             return
@@ -146,11 +139,24 @@ class MinesweeperEngine:
     def open_ratio(self):
         return self.num_open_cells / (self.width*self.height)
 
+    def to_str(self, is_view_mask=False):
+        source = self.view_mask if is_view_mask else self.field
+        row_strs = []
+        for y in range(self.height):
+            row = []
+            for x in range(self.width):
+                if is_view_mask and source[y][x] == CellValue.HIDDEN and self.field[y][x] == CellValue.MINE:
+                    row.append("☒")
+                else:
+                    row.append(CELL_STR[source[y][x]])
+            row_strs.append(" ".join(row))
+        return "\n".join(row_strs)
+
     def __str__(self):
-        return self.to_str(False)
+        return self.to_str(is_view_mask=True)
 
 
 if __name__ == '__main__':
     engine = MinesweeperEngine(40, 10, 100)
-    print(engine)
+    print(engine.to_str(False))
     print(engine.to_str(True))
