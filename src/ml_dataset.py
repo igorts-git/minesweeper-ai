@@ -95,6 +95,9 @@ class MinesweeperDataset(torch.utils.data.Dataset):
         self.num_files, self.num_samples = self.ScanDir()
         self.shuffle = shuffle
         self.file_indicies = list(range(self.num_files))
+        self.num_augmentations = 4
+        if width == height:
+            self.num_augmentations *= 2
         if self.shuffle:
             random.shuffle(self.file_indicies)
         assert self.num_samples > 0, f"No matching data files in '{data_dir}'"
@@ -117,11 +120,34 @@ class MinesweeperDataset(torch.utils.data.Dataset):
         return file_idx, file_idx * self.num_samples_per_file
 
     def __len__(self):
-        return self.num_samples
+        return self.num_samples * self.num_augmentations
+
+    def AugmentSample(self, record_idx, augmentation_idx):
+        a, b = self.current_file_content[record_idx]
+        assert a.shape == (self.height, self.width), a.shape
+        assert b.shape == (self.height, self.width), b.shape
+        if augmentation_idx // 4 == 1:
+            assert self.height == self.width
+            a = a.T
+            b = b.T
+        match augmentation_idx % 4:
+            case 0:
+                ...
+            case 1:
+                a = a.fliplr()
+                b = b.fliplr()
+            case 2:
+                a = a.flipud()
+                b = b.flipud()
+            case 3:
+                a = a.rot90(k=2)
+                b = b.rot90(k=2)
+        return a.long(), b.long()
 
     def __getitem__(self, idx):
-        assert idx < self.num_samples, (idx, self.num_samples)
-        file_idx = self.file_indicies[idx // self.num_samples_per_file]
+        assert idx < len(self), (idx, len(self))
+        augmentation_idx = idx // self.num_samples
+        file_idx = self.file_indicies[(idx % self.num_samples) // self.num_samples_per_file]
         record_idx = idx % self.num_samples_per_file
         if self.current_file_idx != file_idx:
             file_name = _MakeFileName(
@@ -139,18 +165,23 @@ class MinesweeperDataset(torch.utils.data.Dataset):
             elapsed_t = time.time() - start_t
             if verbose_mode >= 2:
                 print(f"fetched file {file_name} in {elapsed_t:.2f}s")
-        a, b = self.current_file_content[record_idx]
-        return a.long(), b.long()
-
+        return self.AugmentSample(record_idx=record_idx, augmentation_idx=augmentation_idx)
 
 if __name__ == "__main__":
+    # This module is meant to be used as a library and not as a stand-alone executable.
+    # Code below is simply for testing the functionality.
     verbose_mode = 2
-    width = 32
-    height = 32
-    num_samples_per_file = 100
+    width = 10
+    height = 10
+    num_samples_per_file = 3
     gen = DatasetGenerator(width=width, height=height, num_samples_per_file=num_samples_per_file, save_dir="./data")
     gen.GenerateDataset(num_files=4, override=True)
     gen.GenerateDataset(num_files=5, override=False)
     dataset = MinesweeperDataset(width=width, height=height, num_samples_per_file=num_samples_per_file, data_dir="./data", shuffle=True)
-    for x in range(len(dataset)):
-        dataset[x]
+    seen_samples = {}
+    for idx in range(len(dataset)):
+        a, b = dataset[idx]
+        hash_val = hash((tuple(a.reshape((-1,)).tolist()), tuple(b.reshape((-1,)).tolist())))
+        assert hash_val not in seen_samples, (seen_samples[hash_val], idx, hash_val)
+        seen_samples[hash_val] = idx
+    print(f"Produced {len(seen_samples)} unique tensors")
