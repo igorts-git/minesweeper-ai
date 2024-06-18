@@ -1,6 +1,8 @@
 """
 This module helps create datasets of Minesweeper games for training ML models.
-Generation of Minesweeper boards can be slow. This module can save the dataset as files.
+Generation of Minesweeper boards can be slow. This module saves the dataset as files.
+The dataset defined here reuses each sample multiple times using flip and rotation operations.
+When square samples can produce 2x more augmentations, because we can also use their transposes.
 """
 
 import os
