@@ -1,7 +1,5 @@
 # minesweeper-ai
 
-![Game animation](src/animation.gif)
-
 Here I am trying to train AI to play Minesweeper.
 
 I also included a working implementation of Minesweeper game using Tkinter GUI package.
@@ -9,6 +7,15 @@ I also included a working implementation of Minesweeper game using Tkinter GUI p
 To play the game, run `python src/game.py`
 
 The Player AI is implemented in the `src/Minesweeper_Conv.ipynb` notebook.
+
+### Visualization
+
+![Game animation](src/animation.gif)
+
+White cells - high confidence that the cell has no mine.<br>
+Yellow - no confidence.<br>
+Dark Red - high probability of a mine.<br>
+Black - high confidence that it has a mine or cell that is already open.
 
 ### Files:
 * `engine.py` - The business logic of the game.
