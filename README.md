@@ -50,7 +50,7 @@ is a tensor representation of the following board:
 ☐ ☐ 1 ☐ ☐ ☐ ☐ ☐ ☐ ☐
 ```
 
-Labels are stored as a matrix where `1` is a position with a mine `0` is a position without mine and `-100` if the cell is open (its value is not `10` in the input tensor). Note that `-100` is a special value for `F.cross_entropy()` that tells it not to compute loss in that cell (because it's open already and its value is known via the input).
+Labels are stored as a matrix where `1` is a position with a mine, `0` is a position without mine, and `-100` if the cell is open (`cell_value != 10` in the input tensor). Note that `-100` is a special value for `F.cross_entropy()` that tells it not to compute loss in that cell (because it's open already and its value is known via the input).
 
 For example:
 ```
